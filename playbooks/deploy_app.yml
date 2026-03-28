@@ -1,0 +1,95 @@
+---
+- name: Deploy Application to Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - "../vars/app_vars.yml"
+
+  tasks:
+
+    - name: "[PREFLIGHT] Display deployment info"
+      ansible.builtin.debug:
+        msg:
+          - "Deploying: {{ app_name }}"
+          - "Image: {{ app_image }}:{{ app_tag }}"
+          - "Namespace: {{ app_namespace }}"
+          - "Replicas: {{ app_replicas }}"
+
+    - name: "[NAMESPACE] Ensure namespace exists"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ app_namespace }}"
+            labels:
+              managed-by: ansible
+
+    - name: "[SECRET] Create Harbor pull secret"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: harbor-secret
+            namespace: "{{ app_namespace }}"
+          type: kubernetes.io/dockerconfigjson
+          data:
+            .dockerconfigjson: "{{ harbor_dockerconfig | b64encode }}"
+      vars:
+        harbor_dockerconfig: |
+          {
+            "auths": {
+              "{{ harbor_url }}": {
+                "username": "{{ harbor_user }}",
+                "password": "{{ harbor_password }}",
+                "auth": "{{ (harbor_user + ':' + harbor_password) | b64encode }}"
+              }
+            }
+          }
+      no_log: true
+
+    - name: "[DEPLOY] Apply deployment manifest"
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', '../templates/deployment.yml.j2') | from_yaml }}"
+
+    - name: "[SERVICE] Apply service manifest"
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', '../templates/service.yml.j2') | from_yaml }}"
+
+    - name: "[WAIT] Wait for deployment to be ready"
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: "{{ app_name }}"
+        namespace: "{{ app_namespace }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 120
+
+    - name: "[VERIFY] Get deployment status"
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: "{{ app_name }}"
+        namespace: "{{ app_namespace }}"
+      register: deployment_info
+
+    - name: "[VERIFY] Get service info"
+      kubernetes.core.k8s_info:
+        kind: Service
+        name: "{{ app_name }}-svc"
+        namespace: "{{ app_namespace }}"
+      register: service_info
+
+    - name: "[REPORT] Deployment Summary"
+      ansible.builtin.debug:
+        msg:
+          - "✅ Deployment Status: {{ deployment_info.resources[0].status.conditions[-1].type }}"
+          - "✅ Ready Replicas: {{ deployment_info.resources[0].status.readyReplicas | default(0) }}"
+          - "✅ NodePort: {{ service_info.resources[0].spec.ports[0].nodePort }}"
+          - "✅ App accessible at: http://<NODE_IP>:{{ service_info.resources[0].spec.ports[0].nodePort }}"

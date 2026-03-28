@@ -1,0 +1,19 @@
+---
+# Application Configuration
+app_name: "workshop-app"
+app_namespace: "workshop"
+app_image: "client.itssolutions.me/workshop-apps/nginx-app"
+app_tag: "latest"
+app_replicas: 2
+app_port: 80
+app_node_port: 30080
+
+# Harbor Configuration
+harbor_url: "client.itssolutions.me"
+harbor_project: "workshop-apps"
+
+# Resource Limits
+app_cpu_request: "100m"
+app_cpu_limit: "500m"
+app_memory_request: "128Mi"
+app_memory_limit: "512Mi"

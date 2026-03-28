@@ -1,0 +1,25 @@
+---
+- name: Rollback Application Deployment
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - "../vars/app_vars.yml"
+
+  tasks:
+    - name: "[ROLLBACK] Execute rollback"
+      ansible.builtin.command:
+        cmd: "kubectl rollout undo deployment/{{ app_name }} -n {{ app_namespace }}"
+      register: rollback_result
+
+    - name: "[ROLLBACK] Show result"
+      ansible.builtin.debug:
+        msg: "{{ rollback_result.stdout }}"
+
+    - name: "[WAIT] Wait for rollback to complete"
+      ansible.builtin.command:
+        cmd: "kubectl rollout status deployment/{{ app_name }} -n {{ app_namespace }} --timeout=120s"
+      register: rollout_status
+
+    - name: "[VERIFY] Rollback status"
+      ansible.builtin.debug:
+        msg: "{{ rollout_status.stdout }}"

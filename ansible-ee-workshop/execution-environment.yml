@@ -1,0 +1,27 @@
+# Revised execution-environment.yml
+---
+version: 3
+
+images:
+  base_image:
+    name: registry.redhat.io/ansible-automation-platform-24/ee-supported-rhel8:latest
+
+dependencies:
+  galaxy: requirements.yml
+  python: requirements.txt
+  system: bindep.txt
+
+additional_build_steps:
+#  prepend_base:
+#    - ENV ANSIBLE_GALAXY_SERVER_LIST=automation_hub
+#  prepend_galaxy:
+#    - ADD _build/ansible.cfg /home/runner/.ansible.cfg
+  prepend_final:
+    - RUN whoami
+    - RUN cat /etc/os-release
+  append_final:
+    - RUN ansible --version
+    - RUN ansible-galaxy collection list
+
+options:
+  package_manager_path: /usr/bin/microdnf

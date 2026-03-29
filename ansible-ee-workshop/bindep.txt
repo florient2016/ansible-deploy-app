@@ -1,0 +1,4 @@
+git [platform:rpm]
+curl [platform:rpm]
+wget [platform:rpm]
+openssh-clients [platform:rpm]

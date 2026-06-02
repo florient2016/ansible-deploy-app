@@ -6,3 +6,8 @@ collections:
     version: ">=2.4.0"
   - name: community.docker
     version: ">=3.4.0"
+  - name: chocolatey.chocolatey
+    version: ">=1.0.0"
+  - name: ibm.mas_devops
+    version: ">=1.0.0"
+    
